@@ -1,0 +1,41 @@
+{% macro section(title, items) %}
+{% if items %}
+{{ title }}:
+{% for item in items %}
+  - {{ item }}
+{% endfor %}
+
+{% endif %}
+{% endmacro %}
+{{ app_name }} - Your results
+
+Hello {{ candidate_name }},
+
+Your submission for "{{ assessment_title }}" (submitted {{ submitted_at }}) has been evaluated.
+
+Score: {{ raw_score }} / {{ max_score }}
+{% if percentage %}Percentage: {{ percentage }}%
+{% endif %}
+{% if category %}Performance category: {{ category }}
+(The category describes your result on this assessment only, not your overall ability.)
+{% endif %}
+{% if ai_assisted %}Some written answers were scored with AI assistance using a predefined rubric.
+{% endif %}
+
+{% if feedback %}
+YOUR PERSONALISED FEEDBACK
+
+{{ feedback.summary }}
+
+{{ section("Strengths", feedback.strengths) }}{{ section("Areas to improve", feedback.improvement_areas) }}{{ section("Recommendations", feedback.recommendations) }}{{ section("Suggested practice areas", feedback.practice_areas) }}{{ section("Your next steps", feedback.next_steps) }}{% if feedback.evidence_limitations %}Note: {{ feedback.evidence_limitations }}
+
+{% endif %}
+{{ feedback.closing_message }}
+
+(Feedback was generated with AI from your verified results.)
+{% else %}
+Personalised feedback is not available for this result. Your score above is final.
+{% endif %}
+
+Best regards,
+The {{ app_name }} team

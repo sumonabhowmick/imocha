@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Assessment - AssessFlow AI</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">AssessFlow AI</span>
+    <span id="timer" class="timer hidden" aria-live="polite"></span>
+  </header>
+  <main>
+    <div id="global-message" class="alert hidden" role="alert"></div>
+
+    <!-- 1. Landing / overview -->
+    <section id="overview" class="card hidden">
+      <p class="muted" id="ov-greeting"></p>
+      <h1 id="ov-title"></h1>
+      <p id="ov-description" class="pre"></p>
+      <dl class="facts">
+        <dt>Questions</dt><dd id="ov-questions"></dd>
+        <dt>Duration</dt><dd id="ov-duration"></dd>
+        <dt>Access window</dt><dd id="ov-window"></dd>
+        <dt>Timezone</dt><dd id="ov-timezone"></dd>
+        <dt>Attempts</dt><dd id="ov-attempts"></dd>
+      </dl>
+      <h2>Instructions</h2>
+      <p id="ov-instructions" class="pre"></p>
+      <div id="ov-policy" class="alert info small"></div>
+      <div id="ov-blocked" class="alert warn hidden"></div>
+      <div class="row">
+        <button id="start-btn" class="primary hidden" type="button">Start assessment</button>
+        <button id="resume-btn" class="primary hidden" type="button">Resume assessment</button>
+      </div>
+      <p class="muted small">The timer starts when you press Start. The server records the official start time and deadline.</p>
+    </section>
+
+    <!-- 2. Quiz -->
+    <section id="quiz" class="hidden">
+      <div class="card">
+        <div class="row spread">
+          <h2 id="quiz-title"></h2>
+          <span class="muted small" id="quiz-progress"></span>
+        </div>
+        <nav id="qnav" class="qnav" aria-label="Questions"></nav>
+        <div id="time-warning" class="alert warn hidden"></div>
+        <p class="muted small" id="q-meta"></p>
+        <p id="q-text" class="pre"></p>
+        <div id="q-answer"></div>
+        <p id="save-status" class="muted small save-status" aria-live="polite"></p>
+        <div class="row spread">
+          <div class="row">
+            <button id="prev-btn" type="button">Previous</button>
+            <button id="next-btn" type="button">Next</button>
+          </div>
+          <button id="review-btn" class="primary" type="button">Review and submit</button>
+        </div>
+      </div>
+      <div id="confirm-panel" class="card hidden">
+        <h2>Submit your assessment?</h2>
+        <p id="confirm-text"></p>
+        <p class="muted small">After submitting you cannot change your answers.</p>
+        <div class="row">
+          <button id="confirm-submit" class="primary" type="button">Yes, submit now</button>
+          <button id="cancel-submit" type="button">Keep working</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Confirmation -->
+    <section id="done" class="card hidden">
+      <h1>Submission received</h1>
+      <p id="done-message"></p>
+      <p class="muted small" id="done-time"></p>
+      <p>You can close this window now.</p>
+    </section>
+  </main>
+  <script src="/static/assessment.js"></script>
+</body>
+</html>

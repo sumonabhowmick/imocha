@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Verify your invitation - AssessFlow AI</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar"><span class="brand">AssessFlow AI</span></header>
+  <main>
+    <section class="card">
+      <h1>Verify your invitation</h1>
+      <p class="muted">Enter the one-time verification code from your invitation email to access your assessment.</p>
+
+      <div id="no-token" class="alert error hidden">
+        This page needs the personal link from your invitation email. Please open the
+        <strong>Start Assessment</strong> button in that email.
+      </div>
+
+      <form id="verify-form" class="hidden" autocomplete="off">
+        <label for="passcode">Verification code</label>
+        <input id="passcode" class="passcode" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="10" required autofocus>
+        <div id="message" class="alert hidden" role="status"></div>
+        <div class="row">
+          <button id="verify-btn" class="primary" type="submit">Verify and continue</button>
+          <button id="resend-btn" class="link" type="button">Send me a new code</button>
+        </div>
+        <p class="muted small">Codes expire after a few minutes and work only once. Requesting a new code cancels the previous one.</p>
+      </form>
+    </section>
+    <p class="muted small">Your link and code arrive in the same inbox, so keep your email account secure and never share the code.</p>
+  </main>
+  <script src="/static/start.js"></script>
+</body>
+</html>

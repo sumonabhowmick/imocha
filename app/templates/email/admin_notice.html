@@ -1,0 +1,11 @@
+{% extends "_layout.html" %}
+{% block content %}
+<p>{{ headline }}</p>
+<table role="presentation" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-size:14px;margin:12px 0;">
+<tr><td style="color:#6b7280;">Candidate</td><td>{{ candidate_name }}</td></tr>
+<tr><td style="color:#6b7280;">Assessment</td><td>{{ assessment_title }}</td></tr>
+<tr><td style="color:#6b7280;">Result ID</td><td>{{ result_id }}</td></tr>
+<tr><td style="color:#6b7280;">Result status</td><td>{{ result_status }}{% if pending_review %} ({{ pending_review }} answer(s) awaiting review){% endif %}</td></tr>
+</table>
+<p>Open the protected dashboard to view details: <a href="{{ dashboard_url }}">{{ dashboard_url }}</a></p>
+{% endblock %}

@@ -1,0 +1,26 @@
+{{ app_name }} - Assessment invitation
+
+Hello {{ candidate_name }},
+
+You have been invited to take the assessment "{{ assessment_title }}".
+
+Scheduled date:       {{ scheduled_date }}
+Access window opens:  {{ window_start }}
+Access window closes: {{ window_end }}
+Timezone:             {{ timezone }}
+Duration:             {{ duration_minutes }} minutes once you start
+
+{% if finish_after_window %}Once started, you have the full duration to finish, even if the window closes meanwhile.{% else %}Any attempt in progress ends automatically when the window closes, so start early enough to finish.{% endif %}
+
+
+Start Assessment: {{ start_url }}
+
+One-time verification code: {{ passcode }}
+
+The code expires {{ passcode_ttl }} minutes after this email was sent and can be used only once.
+If it has expired, choose "Send me a new code" on the verification page.
+
+Security: do not forward this email or share the code. The link and the code both
+arrive in this inbox, so keep your email account secure.
+
+Questions? Contact {{ support_contact }}.

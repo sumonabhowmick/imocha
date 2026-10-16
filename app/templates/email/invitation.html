@@ -1,0 +1,24 @@
+{% extends "_layout.html" %}
+{% block content %}
+<p>Hello {{ candidate_name }},</p>
+<p>You have been invited to take the assessment <strong>{{ assessment_title }}</strong> on {{ app_name }}.</p>
+<table role="presentation" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-size:14px;margin:12px 0;">
+<tr><td style="color:#6b7280;">Scheduled date</td><td>{{ scheduled_date }}</td></tr>
+<tr><td style="color:#6b7280;">Access window opens</td><td>{{ window_start }}</td></tr>
+<tr><td style="color:#6b7280;">Access window closes</td><td>{{ window_end }}</td></tr>
+<tr><td style="color:#6b7280;">Timezone</td><td>{{ timezone }}</td></tr>
+<tr><td style="color:#6b7280;">Duration</td><td>{{ duration_minutes }} minutes once you start</td></tr>
+</table>
+<p>You can start at any time inside the access window.
+{% if finish_after_window %}Once started, you have the full duration to finish, even if the window closes meanwhile.{% else %}Any attempt in progress ends automatically when the window closes, so start early enough to finish.{% endif %}</p>
+<p style="text-align:center;margin:28px 0;">
+<a href="{{ start_url }}" style="background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:600;display:inline-block;">Start Assessment</a>
+</p>
+<p>When asked, enter this one-time verification code:</p>
+<p style="font-size:28px;letter-spacing:6px;font-weight:700;text-align:center;background:#f1f5f9;padding:12px;border-radius:6px;">{{ passcode }}</p>
+<p style="font-size:14px;">This code expires <strong>{{ passcode_ttl }} minutes</strong> after this email was sent and can be used only once.
+If it has expired when you open the link, select <em>"Send me a new code"</em> on the verification page and a fresh code will be emailed to you.</p>
+<p style="font-size:13px;color:#4b5563;"><strong>Security tips:</strong> do not forward this email or share the code; it gives access to your personal assessment.
+The link and the code both arrive in this inbox, so keep your email account secure.</p>
+<p>Good luck!<br>The {{ app_name }} team</p>
+{% endblock %}

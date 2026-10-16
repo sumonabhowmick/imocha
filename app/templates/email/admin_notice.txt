@@ -1,0 +1,11 @@
+{{ app_name }} - Admin notification
+
+{{ headline }}
+
+Candidate:     {{ candidate_name }}
+Assessment:    {{ assessment_title }}
+Result ID:     {{ result_id }}
+Result status: {{ result_status }}{% if pending_review %} ({{ pending_review }} answer(s) awaiting review){% endif %}
+
+
+Open the protected dashboard to view details: {{ dashboard_url }}
