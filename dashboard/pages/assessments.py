@@ -65,7 +65,7 @@ with tab_list:
                 for a in assessments
             ]
         )
-        st.dataframe(df, hide_index=True, use_container_width=True)
+        st.dataframe(df, hide_index=True, width="stretch")
 
 with tab_create:
     with st.form("create_assessment"):
@@ -206,7 +206,7 @@ if a["status"] != "archived":
         with st.expander("Performance categories (optional, assessment-specific)"):
             st.caption("Bands must cover 0–100% without gaps or overlaps. Min is inclusive; max is exclusive except for the last band.")
             scale_df = st.data_editor(
-                pd.DataFrame(a["category_scale"]), num_rows="dynamic", key=f"scale{selected}", use_container_width=True
+                pd.DataFrame(a["category_scale"]), num_rows="dynamic", key=f"scale{selected}", width="stretch"
             )
             if st.button("Save category scale"):
                 bands = [
@@ -250,7 +250,7 @@ if is_draft:
 
 def options_editor(key: str, existing: list | None):
     default = existing or [{"id": "A", "text": ""}, {"id": "B", "text": ""}, {"id": "C", "text": ""}, {"id": "D", "text": ""}]
-    edited = st.data_editor(pd.DataFrame(default), num_rows="dynamic", key=key, use_container_width=True)
+    edited = st.data_editor(pd.DataFrame(default), num_rows="dynamic", key=key, width="stretch")
     return [
         {"id": str(r["id"]).strip(), "text": str(r["text"]).strip()}
         for r in edited.to_dict("records")

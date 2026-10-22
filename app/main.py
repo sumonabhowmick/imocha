@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 
-from app.api import assessments, auth, candidates, feedback, invitations, questions, results, student_assessment
+from app.api import agents, assessments, auth, candidates, feedback, invitations, questions, results, student_assessment
 from app.config import get_settings
 from app.database import SessionLocal
 from app.errors import AppError
@@ -112,7 +112,7 @@ async def integrity_handler(_request: Request, _exc: IntegrityError):
 
 
 # --- Routers ------------------------------------------------------------------------
-for module in (auth, assessments, questions, candidates, invitations, student_assessment, results, feedback):
+for module in (auth, assessments, questions, candidates, invitations, student_assessment, results, feedback, agents):
     app.include_router(module.router)
 
 

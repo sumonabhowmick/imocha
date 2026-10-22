@@ -133,6 +133,12 @@ class AIService:
     def _uses_real_openai(self) -> bool:
         return self._llm_factory is _default_llm_factory
 
+    def chat_model(self) -> BaseChatModel:
+        """The configured chat model, for the multi-agent assistant (app/agents)."""
+        if self._uses_real_openai() and not get_settings().ai_configured:
+            raise AIServiceError("OpenAI is not configured. Set OPENAI_API_KEY and OPENAI_MODEL in .env.")
+        return self._llm_factory()
+
     # --- chain construction ----------------------------------------------------------
     def _build_chain(self, rules: str, schema: type[T]) -> Runnable:
         parser = PydanticOutputParser(pydantic_object=schema)

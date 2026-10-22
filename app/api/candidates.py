@@ -33,7 +33,14 @@ def list_candidates(
 
 @router.patch("/candidates/{candidate_id}", response_model=CandidateOut)
 def update_candidate(candidate_id: int, body: CandidateUpdate, db: Session = Depends(get_db)):
+    """Edit name, email or active status. Changing the email revokes unused invitations."""
     return candidate_service.update_candidate(db, candidate_id, body)
+
+
+@router.delete("/candidates/{candidate_id}", status_code=204)
+def delete_candidate(candidate_id: int, db: Session = Depends(get_db)):
+    """Delete a candidate who has never started an assessment (409 otherwise: deactivate instead)."""
+    candidate_service.delete_candidate(db, candidate_id)
 
 
 @router.post("/assessments/{assessment_id}/assign")

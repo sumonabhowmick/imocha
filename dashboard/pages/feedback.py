@@ -93,7 +93,7 @@ with tab_admin:
                 bullet_list("Practice topics", c["practice_topics"])
             if c["follow_up_items"]:
                 st.markdown("**Follow-up items**")
-                st.dataframe(pd.DataFrame(c["follow_up_items"]), hide_index=True, use_container_width=True)
+                st.dataframe(pd.DataFrame(c["follow_up_items"]), hide_index=True, width="stretch")
             if c.get("limitations"):
                 st.caption(f"Limitations: {c['limitations']}")
         try:
@@ -105,7 +105,7 @@ with tab_admin:
                       "Points": f"{q['awarded_points'] if q['awarded_points'] is not None else '-'} / {q['max_points']:g}"}
                      for q in detail["questions"]]
                 ),
-                hide_index=True, use_container_width=True,
+                hide_index=True, width="stretch",
             )
         except api.APIError as exc:
             api.show_error(exc)
@@ -138,17 +138,17 @@ with tab_group:
     left, right = st.columns(2)
     if stats["score_distribution"]:
         dist = pd.DataFrame({"range": list(stats["score_distribution"]), "candidates": list(stats["score_distribution"].values())})
-        left.plotly_chart(px.bar(dist, x="range", y="candidates", title="Score distribution"), use_container_width=True)
+        left.plotly_chart(px.bar(dist, x="range", y="candidates", title="Score distribution"), width="stretch")
     if stats["category_counts"]:
         cats = pd.DataFrame({"category": list(stats["category_counts"]), "count": list(stats["category_counts"].values())})
-        right.plotly_chart(px.pie(cats, names="category", values="count", title="Performance categories"), use_container_width=True)
+        right.plotly_chart(px.pie(cats, names="category", values="count", title="Performance categories"), width="stretch")
     if stats["topics"]:
         st.markdown("**Topic performance**")
         topics = pd.DataFrame(stats["topics"])
-        st.plotly_chart(px.bar(topics, x="topic", y="average_percent", range_y=[0, 100]), use_container_width=True)
+        st.plotly_chart(px.bar(topics, x="topic", y="average_percent", range_y=[0, 100]), width="stretch")
     if stats["candidates"]:
         st.markdown("**Candidates (lowest score first)**")
-        st.dataframe(pd.DataFrame(stats["candidates"]), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(stats["candidates"]), hide_index=True, width="stretch")
 
     st.markdown("##### AI group summary")
     if group and group["generation_status"] == "failed":
@@ -168,6 +168,6 @@ with tab_group:
         bullet_list("Recommended training priorities", g["training_priorities"])
         if g["candidates_needing_support"]:
             st.markdown("**Candidates who may benefit from additional support**")
-            st.dataframe(pd.DataFrame(g["candidates_needing_support"]), hide_index=True, use_container_width=True)
+            st.dataframe(pd.DataFrame(g["candidates_needing_support"]), hide_index=True, width="stretch")
         if g.get("limitations"):
             st.caption(f"Limitations: {g['limitations']}")

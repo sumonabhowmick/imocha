@@ -46,17 +46,63 @@ def list_candidates(db: Session, search: str | None = None, active_only: bool = 
 
 
 def update_candidate(db: Session, candidate_id: int, data: CandidateUpdate) -> Candidate:
-    """Deactivating a candidate blocks new access but keeps every historical result."""
+    """Edit name, email or active status.
+
+    Deactivating blocks new access but keeps every historical result. When the email
+    changes, invitations that were sent to the old address but never used are revoked
+    (so the old inbox can no longer start the assessment); a student who has already
+    verified keeps their session. Resend the invitation to reach the new address.
+    """
+    from app.services.invitation_service import revoke_unused_invitations
+
     candidate = db.get(Candidate, candidate_id)
     if not candidate:
         raise not_found("Candidate")
     changes = data.model_dump(exclude_unset=True)
     if "name" in changes and changes["name"]:
         candidate.name = changes["name"].strip()
+    if changes.get("email"):
+        new_email = auth_service.normalize_email(changes["email"])
+        if new_email != candidate.email:
+            taken = db.scalar(select(Candidate.id).where(Candidate.email == new_email, Candidate.id != candidate.id))
+            if taken:
+                raise conflict("Another candidate already uses this email.")
+            candidate.email = new_email
+            revoke_unused_invitations(db, candidate.id)
     if "is_active" in changes and changes["is_active"] is not None:
         candidate.is_active = changes["is_active"]
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise conflict("Another candidate already uses this email.") from exc
     return candidate
+
+
+def delete_candidate(db: Session, candidate_id: int) -> None:
+    """Delete a candidate who has never started an assessment.
+
+    Their assignments and unused invitations are removed with them (email delivery
+    records are kept, unlinked). Anyone with an attempt has results that must be kept,
+    so they can only be deactivated.
+    """
+    candidate = db.get(Candidate, candidate_id, with_for_update=True)
+    if not candidate:
+        raise not_found("Candidate")
+    assignment_ids = list(
+        db.scalars(select(AssessmentAssignment.id).where(AssessmentAssignment.candidate_id == candidate_id))
+    )
+    if assignment_ids and db.scalar(select(func.count(Attempt.id)).where(Attempt.assignment_id.in_(assignment_ids))):
+        raise conflict(
+            "This candidate has already taken an assessment, so their results must be kept. "
+            "Deactivate the candidate instead.",
+            "candidate_has_results",
+        )
+    for assignment in db.scalars(select(AssessmentAssignment).where(AssessmentAssignment.id.in_(assignment_ids))):
+        db.delete(assignment)  # invitations and their student sessions are deleted by cascade
+    db.flush()
+    db.delete(candidate)
+    db.commit()
 
 
 def assign_candidates(

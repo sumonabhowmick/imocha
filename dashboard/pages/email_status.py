@@ -39,7 +39,7 @@ st.dataframe(
         ]
     ),
     hide_index=True,
-    use_container_width=True,
+    width="stretch",
 )
 
 failed = [log for log in logs if log["status"] in ("failed", "queued")]

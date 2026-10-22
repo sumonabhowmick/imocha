@@ -46,7 +46,7 @@ with left:
     counts = data["assignment_status_counts"]
     if counts:
         df = pd.DataFrame({"status": [badge(k) for k in counts], "count": list(counts.values())})
-        st.plotly_chart(px.bar(df, x="status", y="count", text="count"), use_container_width=True)
+        st.plotly_chart(px.bar(df, x="status", y="count", text="count"), width="stretch")
     else:
         st.caption("No assignments yet.")
 with right:
@@ -54,7 +54,7 @@ with right:
     cats = data["category_counts"]
     if cats:
         df = pd.DataFrame({"category": list(cats), "count": list(cats.values())})
-        st.plotly_chart(px.pie(df, names="category", values="count", hole=0.45), use_container_width=True)
+        st.plotly_chart(px.pie(df, names="category", values="count", hole=0.45), width="stretch")
         st.caption("Categories describe results on a specific assessment, not overall ability.")
     else:
         st.caption("No final results yet.")

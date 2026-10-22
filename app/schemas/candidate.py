@@ -14,6 +14,7 @@ class CandidateCreate(BaseModel):
 
 class CandidateUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=120)
+    email: EmailStr | None = None
     is_active: bool | None = None
 
 

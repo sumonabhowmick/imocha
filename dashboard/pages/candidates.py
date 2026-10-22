@@ -37,17 +37,54 @@ with tab_candidates:
                 ]
             ),
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
-        with st.expander("Activate / deactivate a candidate"):
-            st.caption("Deactivating blocks new access but keeps all historical results.")
-            target = st.selectbox("Candidate", candidates, format_func=lambda c: f"{c['name']} <{c['email']}>")
-            if st.button("Deactivate" if target["is_active"] else "Reactivate"):
+        st.markdown("#### Edit or delete a candidate")
+        target = st.selectbox("Candidate", candidates, format_func=lambda c: f"#{c['id']} {c['name']} <{c['email']}>")
+
+        with st.form(f"edit_candidate_{target['id']}"):
+            c1, c2 = st.columns(2)
+            new_name = c1.text_input("Full name", value=target["name"])
+            new_email = c2.text_input("Email", value=target["email"])
+            active = st.checkbox(
+                "Active", value=target["is_active"],
+                help="Inactive candidates cannot sign in or be assigned, but their results are kept.",
+            )
+            st.caption("If you change the email, any unused invitation sent to the old address stops working; resend it from the Assignments tab.")
+            if st.form_submit_button("Save changes", type="primary"):
+                changes = {}
+                if new_name.strip() != target["name"]:
+                    changes["name"] = new_name.strip()
+                if new_email.strip().lower() != target["email"]:
+                    changes["email"] = new_email.strip()
+                if active != target["is_active"]:
+                    changes["is_active"] = active
+                if not changes:
+                    st.info("Nothing changed.")
+                else:
+                    try:
+                        api.patch(f"/api/candidates/{target['id']}", changes)
+                        st.session_state["candidate_notice"] = f"Saved changes to {new_name.strip()}."
+                        st.rerun()
+                    except api.APIError as exc:
+                        api.show_error(exc)
+
+        with st.expander(f"Delete {target['name']}"):
+            st.caption(
+                "Only candidates who have never started an assessment can be deleted; their assignments and "
+                "unused invitations are removed too. Anyone with results can only be deactivated, so results are kept."
+            )
+            confirm = st.checkbox(f"Yes, permanently delete {target['name']} <{target['email']}>", key=f"confirm_delete_{target['id']}")
+            if st.button("Delete candidate", disabled=not confirm, key=f"delete_{target['id']}"):
                 try:
-                    api.patch(f"/api/candidates/{target['id']}", {"is_active": not target["is_active"]})
+                    api.delete(f"/api/candidates/{target['id']}")
+                    st.session_state["candidate_notice"] = f"Deleted {target['name']}."
                     st.rerun()
                 except api.APIError as exc:
                     api.show_error(exc)
+
+        if notice := st.session_state.pop("candidate_notice", None):
+            st.success(notice)
     else:
         st.info("No candidates found.")
 
@@ -123,7 +160,7 @@ with tab_assign:
             ]
         ),
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
     )
 
     st.markdown("#### Send or resend an invitation")

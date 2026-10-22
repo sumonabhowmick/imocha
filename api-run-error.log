@@ -6,3 +6,26 @@ INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 2026-10-16 15:57:42,438 INFO httpx2: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
 2026-10-16 15:58:33,994 INFO httpx2: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
 2026-10-16 15:59:58,199 INFO app.services.assessment_service: Assessment 1 published
+2026-10-16 16:40:19,058 INFO app.services.invitation_service: Invitation 1 issued for assignment 1
+2026-10-16 16:40:19,107 INFO app.services.email_service: Email log 1 (invitation): outbox
+2026-10-16 16:41:01,706 INFO app.services.invitation_service: Invitation 2 issued for assignment 1
+2026-10-16 16:41:01,722 INFO app.services.email_service: Email log 2 (invitation): outbox
+2026-10-16 16:47:52,297 INFO app.services.invitation_service: Invitation 3 issued for assignment 1
+2026-10-16 16:47:52,309 INFO app.services.email_service: Email log 3 (invitation): outbox
+2026-10-16 16:51:23,252 INFO app.services.invitation_service: Invitation 4 issued for assignment 1
+2026-10-16 16:51:23,262 INFO app.services.email_service: Email log 4 (invitation): outbox
+2026-10-16 16:54:58,831 INFO app.services.invitation_service: Invitation 4 verified
+2026-10-16 16:55:02,365 INFO app.services.attempt_service: Attempt 1 started (assignment 1)
+2026-10-16 16:55:35,260 INFO app.services.attempt_service: Attempt 1 submitted
+2026-10-16 16:55:35,335 INFO app.services.grading_service: Attempt 1 graded: result 1 (final)
+2026-10-16 16:55:35,376 INFO app.services.email_service: Email log 5 (admin_result_ready): outbox
+2026-10-16 16:55:39,728 INFO httpx2: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-16 16:55:41,621 INFO httpx2: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-16 16:55:43,286 INFO httpx2: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-16 16:55:43,292 WARNING app.services.ai_service: AI output for admin_feedback failed AdminFeedbackContent validation
+2026-10-16 16:55:43,293 WARNING app.services.feedback_service: admin feedback for result 1 failed: The AI response was not in the expected format.
+2026-10-16 16:55:47,065 INFO httpx2: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-16 16:55:47,074 WARNING app.services.ai_service: AI output for student_feedback failed StudentFeedbackContent validation
+2026-10-16 16:55:47,076 WARNING app.services.feedback_service: student feedback for result 1 failed: The AI response was not in the expected format.
+2026-10-16 16:55:47,109 INFO app.services.email_service: Email log 6 (admin_feedback_failed): outbox
+2026-10-16 16:55:47,111 INFO app.workflows.assessment_workflow: Submission workflow for attempt 1: steps=['load_attempt', 'grade_objective', 'compute_result', 'notify_admin_result', 'admin_feedback', 'student_feedback', 'review_feedback', 'notify_feedback_failed'] result=1/final feedback=failed/failed email=not_sent errors=[]

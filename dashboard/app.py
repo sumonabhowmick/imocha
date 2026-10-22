@@ -53,6 +53,9 @@ else:
                 st.Page(pages_dir / "candidates.py", title="Candidates & invitations", icon="✉️"),
                 st.Page(pages_dir / "email_status.py", title="Email status", icon="📬"),
             ],
+            "AI": [
+                st.Page(pages_dir / "assistant.py", title="AI Assistant", icon="🤖"),
+            ],
         }
     )
     with st.sidebar:

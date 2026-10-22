@@ -52,13 +52,13 @@ df = pd.DataFrame(
         for r in items
     ]
 )
-st.dataframe(df, hide_index=True, use_container_width=True)
+st.dataframe(df, hide_index=True, width="stretch")
 
 pcts = [r["percentage"] for r in items if r["percentage"] is not None and r["result_status"] == "final"]
 if len(pcts) > 1:
     st.plotly_chart(
         px.histogram(pd.DataFrame({"percentage": pcts}), x="percentage", nbins=10, range_x=[0, 100], title="Score distribution (final results)"),
-        use_container_width=True,
+        width="stretch",
     )
 
 # ---------------------------------------------------------------- detail
@@ -101,7 +101,7 @@ st.dataframe(
         ]
     ),
     hide_index=True,
-    use_container_width=True,
+    width="stretch",
 )
 
 reviewable = [q for q in detail["questions"] if q["grading_method"] in ("pending_review", "ai_assisted", "manual") and q["answer_id"]]

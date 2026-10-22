@@ -79,11 +79,17 @@ def _build_message(to: str, subject: str, html: str, text: str) -> EmailMessage:
     return msg
 
 
-def _deliver_smtp(msg: EmailMessage) -> None:
+def _smtp_session(send: EmailMessage | None) -> None:
+    """Connect, upgrade to TLS, log in and (optionally) send one message.
+
+    With `send=None` it only verifies the connection and credentials. Credentials are
+    passed straight to smtplib and never logged or included in error messages.
+    """
     settings = get_settings()
     if not settings.smtp_configured:
-        raise EmailDeliveryError("SMTP is not configured (set SMTP_HOST and SMTP_FROM_EMAIL).")
+        raise EmailDeliveryError("SMTP is not configured (set SMTP_HOST and SMTP_FROM_EMAIL in .env).")
     context = ssl.create_default_context()
+    is_gmail = settings.smtp_host.lower().endswith("gmail.com")
     try:
         if settings.smtp_use_ssl:
             server = smtplib.SMTP_SSL(
@@ -95,12 +101,21 @@ def _deliver_smtp(msg: EmailMessage) -> None:
             if not settings.smtp_use_ssl:
                 server.starttls(context=context)  # refuse to send credentials or mail without TLS
             if settings.smtp_username:
-                server.login(settings.smtp_username, settings.smtp_password)
-            refused = server.send_message(msg)
-            if refused:
-                raise EmailDeliveryError("The SMTP server refused the recipient.")
+                # Gmail displays app passwords in groups ("abcd efgh ..."); the spaces are not part of it.
+                password = settings.smtp_password.replace(" ", "") if is_gmail else settings.smtp_password
+                server.login(settings.smtp_username, password)
+            if send is not None:
+                refused = server.send_message(send)
+                if refused:
+                    raise EmailDeliveryError("The SMTP server refused the recipient.")
     except smtplib.SMTPAuthenticationError as exc:
-        raise EmailDeliveryError(f"SMTP authentication failed (code {exc.smtp_code}).") from exc
+        hint = (
+            " For Gmail, use a 16-character App Password (Google Account > Security > 2-Step Verification"
+            " > App passwords), not your normal password, and set SMTP_USERNAME to the full Gmail address."
+            if is_gmail
+            else ""
+        )
+        raise EmailDeliveryError(f"SMTP authentication failed (code {exc.smtp_code}).{hint}") from exc
     except smtplib.SMTPRecipientsRefused as exc:
         raise EmailDeliveryError("The SMTP server refused the recipient address.") from exc
     except smtplib.SMTPResponseException as exc:
@@ -112,6 +127,31 @@ def _deliver_smtp(msg: EmailMessage) -> None:
         raise EmailDeliveryError(f"SMTP failure ({type(exc).__name__}).") from exc
     except OSError as exc:
         raise EmailDeliveryError(f"Network error while sending email ({type(exc).__name__}).", transient=True) from exc
+
+
+def _deliver_smtp(msg: EmailMessage) -> None:
+    _smtp_session(msg)
+
+
+def check_smtp_connection() -> None:
+    """Verify SMTP host, TLS and login without sending anything. Raises EmailDeliveryError."""
+    _smtp_session(None)
+
+
+def send_test_email(to: str) -> None:
+    """Send a harmless test message (no codes, tokens or personal data). Raises EmailDeliveryError."""
+    settings = get_settings()
+    html, text = _render(
+        "admin_notice",
+        headline="This is a test email from AssessFlow AI. If you received it, SMTP delivery works.",
+        candidate_name="(test)",
+        assessment_title="(test)",
+        result_status="n/a",
+        pending_review=0,
+        dashboard_url=settings.dashboard_url,
+        result_id="n/a",
+    )
+    _smtp_session(_build_message(to, "AssessFlow AI - SMTP test email", html, text))
 
 
 def _deliver_outbox(msg: EmailMessage, log_id: int) -> None:

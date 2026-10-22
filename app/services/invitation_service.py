@@ -61,6 +61,26 @@ def revoke_usable_invitations(db: Session, assignment_id: int) -> None:
     db.flush()
 
 
+def revoke_unused_invitations(db: Session, candidate_id: int) -> int:
+    """Revoke invitations of a candidate that were sent but never used to sign in
+    (status 'active'), e.g. after their email address changed. Verified sessions are
+    left alone so a student who is already taking a test is not interrupted.
+    The caller commits. Returns how many were revoked."""
+    unused = list(
+        db.scalars(
+            select(Invitation)
+            .join(AssessmentAssignment, Invitation.assignment_id == AssessmentAssignment.id)
+            .where(AssessmentAssignment.candidate_id == candidate_id, Invitation.status == "active")
+        )
+    )
+    for inv in unused:
+        inv.status = "revoked"
+        inv.passcode_hash = None
+    if unused:
+        logger.info("Revoked %s unused invitation(s) for candidate %s", len(unused), candidate_id)
+    return len(unused)
+
+
 def issue_invitation(db: Session, assignment_id: int, log: EmailLog | None = None) -> IssuedInvitation:
     """Create a new invitation (revoking older ones) and email it to the candidate."""
     settings = get_settings()

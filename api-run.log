@@ -78,3 +78,38 @@ INFO:     127.0.0.1:50541 - "GET /api/candidates?active_only=True HTTP/1.1" 200 
 INFO:     127.0.0.1:50550 - "GET /api/assessments/1/assignments HTTP/1.1" 200 OK
 INFO:     127.0.0.1:50557 - "POST /api/assignments/1/invite HTTP/1.1" 200 OK
 INFO:     127.0.0.1:55359 - "POST /api/invitations/verify HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:59303 - "GET /start HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54717 - "POST /api/invitations/verify HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:49226 - "GET /api/candidates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49233 - "GET /api/assessments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49245 - "GET /api/candidates?active_only=True HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49254 - "GET /api/assessments/1/assignments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49265 - "POST /api/assignments/1/invite HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63142 - "GET /start HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54459 - "POST /api/invitations/verify HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:63722 - "GET /start HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58075 - "POST /api/invitations/verify HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58075 - "GET /assessment HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58075 - "GET /static/assessment.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58075 - "GET /api/student/assessment HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58075 - "POST /api/student/attempts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58075 - "GET /api/student/attempts/1/questions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58075 - "PUT /api/student/attempts/1/answers/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51642 - "PUT /api/student/attempts/1/answers/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51642 - "PUT /api/student/attempts/1/answers/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51642 - "PUT /api/student/attempts/1/answers/4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51642 - "PUT /api/student/attempts/1/answers/5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51642 - "PUT /api/student/attempts/1/answers/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51642 - "PUT /api/student/attempts/1/answers/7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51642 - "PUT /api/student/attempts/1/answers/8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51642 - "PUT /api/student/attempts/1/answers/9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51642 - "PUT /api/student/attempts/1/answers/10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51642 - "GET /api/student/attempts/1/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51642 - "POST /api/student/attempts/1/submit HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61699 - "GET /start HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54239 - "GET /api/assessments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54247 - "GET /api/assessments/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58863 - "GET /api/assessments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58872 - "GET /api/admin/results?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58882 - "GET /api/admin/results/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58907 - "GET /api/health HTTP/1.1" 200 OK
