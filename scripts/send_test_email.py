@@ -1,11 +1,12 @@
-"""Check SMTP settings and optionally send one test email to your own address.
+"""Check email settings and optionally send one test email to your own address.
 
 Usage (from the project root, with the virtual environment active):
     python -m scripts.send_test_email --check-only            # TLS + login only, sends nothing
     python -m scripts.send_test_email --to you@gmail.com      # sends one harmless test email
 
-It always uses SMTP (even if EMAIL_BACKEND=outbox), reads every setting from .env,
-never prints the password, and does not touch the database.
+It uses Brevo when EMAIL_BACKEND=brevo and SMTP otherwise (even if EMAIL_BACKEND=outbox),
+reads every setting from .env / environment variables, never prints passwords or API keys,
+and does not touch the database.
 """
 from __future__ import annotations
 
@@ -15,7 +16,12 @@ import sys
 from email_validator import EmailNotValidError, validate_email
 
 from app.config import get_settings
-from app.services.email_service import EmailDeliveryError, check_smtp_connection, send_test_email
+from app.services.email_service import (
+    EmailDeliveryError,
+    check_brevo_connection,
+    check_smtp_connection,
+    send_test_email,
+)
 
 
 def _mask(address: str) -> str:
@@ -31,6 +37,10 @@ def main() -> int:
     args = parser.parse_args()
 
     settings = get_settings()
+    use_brevo = settings.email_backend == "brevo"
+    if use_brevo:
+        print("Delivery:       Brevo HTTPS API")
+        print(f"Brevo API key:  {'set' if settings.brevo_api_key else 'NOT SET'}")
     print(f"SMTP host:      {settings.smtp_host or '(not set)'}:{settings.smtp_port}")
     print(f"Encryption:     {'implicit TLS (SSL)' if settings.smtp_use_ssl else 'STARTTLS'}")
     print(f"Username:       {_mask(settings.smtp_username)}")
@@ -45,8 +55,12 @@ def main() -> int:
 
     try:
         if args.check_only:
-            check_smtp_connection()
-            print("OK: connected, TLS established and login accepted. Nothing was sent.")
+            if use_brevo:
+                check_brevo_connection()
+                print("OK: Brevo accepted the API key. Nothing was sent.")
+            else:
+                check_smtp_connection()
+                print("OK: connected, TLS established and login accepted. Nothing was sent.")
         else:
             try:
                 to = validate_email(args.to, check_deliverability=False).normalized
@@ -54,7 +68,7 @@ def main() -> int:
                 print(f"Invalid --to address: {exc}", file=sys.stderr)
                 return 2
             send_test_email(to)
-            print(f"OK: the SMTP server accepted a test email for {_mask(to)}. Check that inbox (and spam).")
+            print(f"OK: {'Brevo' if use_brevo else 'the SMTP server'} accepted a test email for {_mask(to)}. Check that inbox (and spam).")
     except EmailDeliveryError as exc:
         print(f"FAILED: {exc}", file=sys.stderr)
         return 1

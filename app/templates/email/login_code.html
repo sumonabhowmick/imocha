@@ -1,0 +1,8 @@
+{% extends "_layout.html" %}
+{% block content %}
+<p>Hello {{ candidate_name }},</p>
+<p>Use this code to sign in to the {{ app_name }} student portal:</p>
+<p style="font-size:28px;letter-spacing:6px;font-weight:700;text-align:center;background:#f1f5f9;padding:12px;border-radius:6px;">{{ passcode }}</p>
+<p style="font-size:14px;">It expires in <strong>{{ passcode_ttl }} minutes</strong> and can be used only once.</p>
+<p style="font-size:13px;color:#4b5563;">If you did not try to sign in, you can ignore this email. Never share this code with anyone.</p>
+{% endblock %}

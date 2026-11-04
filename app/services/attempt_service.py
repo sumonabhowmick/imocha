@@ -6,6 +6,7 @@ The server is the only authority on time. Browser timers are a display aid only.
 from __future__ import annotations
 
 import logging
+import random
 from datetime import datetime, timedelta
 
 from sqlalchemy import func, select
@@ -107,6 +108,45 @@ def finalize_expired_attempts(db: Session) -> list[int]:
 # ---------------------------------------------------------------------------
 # Student operations
 # ---------------------------------------------------------------------------
+def shuffled_orders(assessment: Assessment) -> tuple[list | None, dict | None]:
+    """Per-student question/option order, fixed once when an attempt starts (so a page
+    refresh never reshuffles). Grading is by question/option id, so order never matters."""
+    rng = random.SystemRandom()
+    question_order = None
+    if assessment.shuffle_questions:
+        question_order = [q.id for q in assessment.questions]
+        rng.shuffle(question_order)
+    option_orders = None
+    if assessment.shuffle_options:
+        option_orders = {}
+        for q in assessment.questions:
+            if q.options_json:
+                ids = [o["id"] for o in q.options_json]
+                rng.shuffle(ids)
+                option_orders[str(q.id)] = ids
+    return question_order, option_orders
+
+
+def ordered_questions(assessment: Assessment, attempt: Attempt) -> list[Question]:
+    questions = list(assessment.questions)
+    if not attempt.question_order:
+        return questions
+    rank = {qid: i for i, qid in enumerate(attempt.question_order)}
+    return sorted(questions, key=lambda q: (rank.get(q.id, len(rank)), q.position, q.id))
+
+
+def ordered_options(question: Question, attempt: Attempt) -> list[dict] | None:
+    """Only id + text of each option (never the correct answer), in this student's order."""
+    if not question.options_json:
+        return None
+    options = [{"id": o["id"], "text": o["text"]} for o in question.options_json]
+    order = (attempt.option_orders or {}).get(str(question.id))
+    if order:
+        rank = {oid: i for i, oid in enumerate(order)}
+        options.sort(key=lambda o: rank.get(o["id"], len(rank)))
+    return options
+
+
 def _attempts_used(db: Session, assignment_id: int) -> int:
     return db.scalar(select(func.count(Attempt.id)).where(Attempt.assignment_id == assignment_id)) or 0
 
@@ -158,9 +198,27 @@ def overview(db: Session, ctx: StudentContext) -> tuple[dict, list[int]]:
     )
 
 
-def start_attempt(db: Session, ctx: StudentContext) -> tuple[Attempt, bool]:
+CAMERA_REQUIRED_MESSAGE = (
+    "Camera proctoring is required for every assessment. Turn on your camera and accept the proctoring notice to start."
+)
+
+
+def start_attempt(db: Session, ctx: StudentContext, proctoring_consent: bool = False) -> tuple[Attempt, bool]:
     """Start (or resume) the student's attempt. Idempotent: repeated calls return the
-    attempt already in progress instead of creating another. Returns (attempt, created)."""
+    attempt already in progress instead of creating another. Returns (attempt, created).
+
+    Camera proctoring is mandatory: every start and resume needs the student's consent
+    (sent by the portal only after the camera is on). Enforced here so no route can skip it."""
+    if not proctoring_consent:
+        raise AppError(403, CAMERA_REQUIRED_MESSAGE, "proctoring_required")
+    attempt, created = _start_or_resume(db, ctx)
+    from app.services.proctoring_service import record_consent
+
+    record_consent(db, attempt)
+    return attempt, created
+
+
+def _start_or_resume(db: Session, ctx: StudentContext) -> tuple[Attempt, bool]:
     # Serialize concurrent start requests for this assignment.
     db.execute(
         select(AssessmentAssignment.id).where(AssessmentAssignment.id == ctx.assignment.id).with_for_update()
@@ -176,12 +234,15 @@ def start_attempt(db: Session, ctx: StudentContext) -> tuple[Attempt, bool]:
     if reason:
         raise AppError(403, reason, "cannot_start")
 
+    question_order, option_orders = shuffled_orders(ctx.assessment)
     attempt = Attempt(
         assignment_id=ctx.assignment.id,
         attempt_number=used + 1,
         started_at=now,
         deadline_at=calculate_deadline(ctx.assessment, now),
         status="in_progress",
+        question_order=question_order,
+        option_orders=option_orders,
     )
     db.add(attempt)
     ctx.assignment.status = "in_progress"
@@ -220,7 +281,7 @@ def questions_for_attempt(db: Session, ctx: StudentContext, attempt_id: int) -> 
         raise AppError(409, "This attempt has already been submitted.", "attempt_closed")
     saved = {a.question_id: a.answer_json for a in db.scalars(select(Answer).where(Answer.attempt_id == attempt.id))}
     questions = []
-    for number, q in enumerate(ctx.assessment.questions, start=1):
+    for number, q in enumerate(ordered_questions(ctx.assessment, attempt), start=1):
         questions.append(
             {
                 "id": q.id,
@@ -229,7 +290,7 @@ def questions_for_attempt(db: Session, ctx: StudentContext, attempt_id: int) -> 
                 "question_type": q.question_type,
                 "points": float(q.points),
                 # Only id + text of each option; never the correct answer.
-                "options": [{"id": o["id"], "text": o["text"]} for o in q.options_json] if q.options_json else None,
+                "options": ordered_options(q, attempt),
                 "saved_answer": saved.get(q.id),
             }
         )

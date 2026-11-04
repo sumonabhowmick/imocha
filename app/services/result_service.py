@@ -140,9 +140,14 @@ def list_results(
             select(EmailLog).where(EmailLog.related_result_id.in_(result_ids), EmailLog.notification_type == "result")
         ):
             email_status[log.related_result_id] = log.status
+    from app.services.proctoring_service import flag_counts
+
+    flags = flag_counts(db, [r[1].id for r in rows])
     items = []
     for result, attempt, _assignment, assessment, candidate in rows:
         row = _row(result, attempt, assessment, candidate)
+        row["proctoring_flags"] = flags.get(attempt.id, 0)
+        row["proctoring_mode"] = assessment.proctoring_mode
         row["student_feedback_status"] = feedback_status.get((result.id, "student"))
         row["admin_feedback_status"] = feedback_status.get((result.id, "admin"))
         row["result_email_status"] = email_status.get(result.id)
@@ -187,6 +192,10 @@ def result_detail(db: Session, result_id: int) -> dict:
         )
     data["questions"] = questions
     data["category_scale"] = category_scale_for(assessment)
+    from app.services.proctoring_service import flag_counts
+
+    data["proctoring_mode"] = assessment.proctoring_mode
+    data["proctoring_flags"] = flag_counts(db, [attempt.id]).get(attempt.id, 0)
     email = db.scalar(
         select(EmailLog).where(EmailLog.related_result_id == result.id, EmailLog.notification_type == "result")
     )

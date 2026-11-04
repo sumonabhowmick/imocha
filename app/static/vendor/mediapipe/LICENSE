@@ -1,0 +1,11 @@
+MediaPipe Tasks Vision (@mediapipe/tasks-vision 1.1.1) and the BlazeFace short-range
+face detection model are Copyright Google LLC, licensed under the Apache License,
+Version 2.0. See https://github.com/google-ai-edge/mediapipe/blob/master/LICENSE
+and https://www.apache.org/licenses/LICENSE-2.0
+
+Files in this folder are unmodified copies from:
+  https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.1.1/
+  https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/
+They are served from AssessFlow AI's own origin so the strict Content-Security-Policy
+(no third-party scripts) can stay in place. Face detection runs entirely in the
+student's browser; no video is uploaded.

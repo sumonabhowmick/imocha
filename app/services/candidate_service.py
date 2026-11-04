@@ -35,8 +35,14 @@ def create_candidate(db: Session, data: CandidateCreate) -> Candidate:
     return candidate
 
 
-def list_candidates(db: Session, search: str | None = None, active_only: bool = False) -> list[Candidate]:
+def list_candidates(
+    db: Session, search: str | None = None, active_only: bool = False, batch_id: int | None = None
+) -> list[Candidate]:
+    from app.models import BatchMember
+
     stmt = select(Candidate).order_by(Candidate.name)
+    if batch_id is not None:
+        stmt = stmt.join(BatchMember, BatchMember.candidate_id == Candidate.id).where(BatchMember.batch_id == batch_id)
     if search:
         pattern = f"%{search.strip()}%"
         stmt = stmt.where(Candidate.name.ilike(pattern) | Candidate.email.ilike(pattern))

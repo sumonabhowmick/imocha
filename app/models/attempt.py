@@ -13,6 +13,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base, TimestampMixin
@@ -43,6 +44,10 @@ class Attempt(TimestampMixin, Base):
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="in_progress")
     auto_submitted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Per-student order, fixed when the attempt starts: [question ids] and {question id: [option ids]}.
+    question_order: Mapped[list | None] = mapped_column(JSONB)
+    option_orders: Mapped[dict | None] = mapped_column(JSONB)
+    proctoring_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     assignment = relationship("AssessmentAssignment", back_populates="attempts")
     answers = relationship("Answer", back_populates="attempt", cascade="all, delete-orphan")

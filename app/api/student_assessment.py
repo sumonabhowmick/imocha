@@ -4,6 +4,7 @@ Identity and assignment come exclusively from the authenticated student session.
 attempt id in the URL is only accepted if it belongs to that session's assignment.
 """
 from fastapi import APIRouter, BackgroundTasks, Depends
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -25,6 +26,10 @@ from app.workflows.assessment_workflow import process_attempt
 router = APIRouter(prefix="/api/student", tags=["student"])
 
 
+class StartAttemptRequest(BaseModel):
+    proctoring_consent: bool = False
+
+
 @router.get("/assessment", response_model=StudentAssessmentOverview)
 def assessment_overview(
     background: BackgroundTasks, ctx: StudentContext = Depends(get_student_context), db: Session = Depends(get_db)
@@ -36,8 +41,14 @@ def assessment_overview(
 
 
 @router.post("/attempts", response_model=AttemptOut)
-def start_attempt(ctx: StudentContext = Depends(require_student_csrf), db: Session = Depends(get_db)):
-    attempt, _created = attempt_service.start_attempt(db, ctx)
+def start_attempt(
+    body: StartAttemptRequest | None = None,
+    ctx: StudentContext = Depends(require_student_csrf),
+    db: Session = Depends(get_db),
+):
+    # Camera proctoring is mandatory for every assessment (enforced in start_attempt).
+    consent = bool(body and body.proctoring_consent)
+    attempt, _created = attempt_service.start_attempt(db, ctx, proctoring_consent=consent)
     return AttemptOut(
         attempt_id=attempt.id,
         attempt_number=attempt.attempt_number,

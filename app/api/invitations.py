@@ -40,7 +40,8 @@ def verify(body: VerifyRequest, request: Request, response: Response, db: Sessio
     response.set_cookie(STUDENT_COOKIE, session_token, httponly=True, **cookie_args)
     # Readable by the page so it can echo it in the X-CSRF-Token header.
     response.set_cookie(CSRF_COOKIE, csrf_token, httponly=False, **cookie_args)
-    return VerifyResponse(message="Verified.", csrf_token=csrf_token)
+    assignment_id = invitation_service.assignment_id_for_token(db, body.token)
+    return VerifyResponse(message="Verified.", csrf_token=csrf_token, assignment_id=assignment_id)
 
 
 @router.post("/invitations/resend-code", response_model=Message)

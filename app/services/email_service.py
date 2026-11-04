@@ -18,6 +18,7 @@ from email.message import EmailMessage
 from email.utils import formataddr, make_msgid
 from pathlib import Path
 
+import httpx
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -133,9 +134,67 @@ def _deliver_smtp(msg: EmailMessage) -> None:
     _smtp_session(msg)
 
 
+BREVO_URL = "https://api.brevo.com/v3/smtp/email"
+
+
+def _deliver_brevo(msg: EmailMessage) -> None:
+    """Send through Brevo's HTTPS API (port 443), for hosts that block SMTP ports.
+    The sender (SMTP_FROM_EMAIL) must be a verified sender in the Brevo account."""
+    settings = get_settings()
+    if not settings.brevo_api_key or not settings.smtp_from_email:
+        raise EmailDeliveryError("Brevo is not configured (set BREVO_API_KEY and SMTP_FROM_EMAIL).")
+    payload = {
+        "sender": {"name": "AssessFlow AI", "email": settings.smtp_from_email},
+        "to": [{"email": msg["To"]}],
+        "subject": msg["Subject"],
+        "textContent": msg.get_body(preferencelist=("plain",)).get_content(),
+        "htmlContent": msg.get_body(preferencelist=("html",)).get_content(),
+    }
+    try:
+        response = httpx.post(
+            BREVO_URL,
+            json=payload,
+            headers={"api-key": settings.brevo_api_key, "accept": "application/json"},
+            timeout=settings.smtp_timeout_seconds,
+        )
+    except httpx.TimeoutException as exc:
+        raise EmailDeliveryError("Brevo request timed out.", transient=True) from exc
+    except httpx.HTTPError as exc:
+        raise EmailDeliveryError(f"Could not reach Brevo ({type(exc).__name__}).", transient=True) from exc
+    if response.status_code in (200, 201, 202):
+        return
+    if response.status_code in (401, 403):
+        raise EmailDeliveryError(f"Brevo rejected the API key (HTTP {response.status_code}).")
+    if response.status_code == 429 or response.status_code >= 500:
+        raise EmailDeliveryError(f"Brevo is temporarily unavailable (HTTP {response.status_code}).", transient=True)
+    # 400 is usually an unverified sender address; Brevo's message contains no secrets.
+    try:
+        detail = str(response.json().get("message", ""))[:200]
+    except ValueError:
+        detail = ""
+    raise EmailDeliveryError(f"Brevo refused the email (HTTP {response.status_code}). {detail}".strip())
+
+
 def check_smtp_connection() -> None:
     """Verify SMTP host, TLS and login without sending anything. Raises EmailDeliveryError."""
     _smtp_session(None)
+
+
+def check_brevo_connection() -> None:
+    """Verify the Brevo API key without sending anything. Raises EmailDeliveryError."""
+    settings = get_settings()
+    if not settings.brevo_api_key:
+        raise EmailDeliveryError("BREVO_API_KEY is not set.")
+    try:
+        response = httpx.get(
+            "https://api.brevo.com/v3/account",
+            headers={"api-key": settings.brevo_api_key, "accept": "application/json"},
+            timeout=settings.smtp_timeout_seconds,
+        )
+    except httpx.HTTPError as exc:
+        raise EmailDeliveryError(f"Could not reach Brevo ({type(exc).__name__}).", transient=True) from exc
+    if response.status_code != 200:
+        raise EmailDeliveryError(f"Brevo rejected the API key (HTTP {response.status_code}).")
 
 
 def send_test_email(to: str) -> None:
@@ -151,7 +210,11 @@ def send_test_email(to: str) -> None:
         dashboard_url=settings.dashboard_url,
         result_id="n/a",
     )
-    _smtp_session(_build_message(to, "AssessFlow AI - SMTP test email", html, text))
+    msg = _build_message(to, "AssessFlow AI - test email", html, text)
+    if settings.email_backend == "brevo":
+        _deliver_brevo(msg)
+    else:
+        _smtp_session(msg)
 
 
 def _deliver_outbox(msg: EmailMessage, log_id: int) -> None:
@@ -172,6 +235,9 @@ def deliver(db: Session, log: EmailLog, html: str, text: str, max_tries: int = 2
             if settings.email_backend == "outbox":
                 _deliver_outbox(msg, log.id)
                 log.status = "outbox"
+            elif settings.email_backend == "brevo":
+                _deliver_brevo(msg)
+                log.status = "sent"
             else:
                 _deliver_smtp(msg)
                 log.status = "sent"

@@ -1,0 +1,11 @@
+{% extends "_layout.html" %}
+{% block content %}
+<p>Hello {{ candidate_name }},</p>
+<p>This is a reminder that you have not started <strong>{{ assessment_title }}</strong> yet.</p>
+<p>The access window closes at <strong>{{ window_end }}</strong>. Once you start, you have {{ duration_minutes }} minutes to finish.</p>
+<p>To begin, open the <em>Start Assessment</em> link from your invitation email, or sign in to the student portal with your email address:</p>
+<p style="text-align:center;margin:24px 0;">
+<a href="{{ portal_url }}" style="background:#0e7c6b;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;font-weight:600;display:inline-block;">Open student portal</a>
+</p>
+<p style="font-size:13px;color:#4b5563;">If you have already finished or do not plan to take this assessment, you can ignore this email.</p>
+{% endblock %}

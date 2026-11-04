@@ -139,7 +139,8 @@ def student_session(make_client, mailbox, email: str) -> TestClient:
 
 
 def start(student: TestClient):
-    return student.post("/api/student/attempts", headers=csrf(student))
+    # Camera proctoring is mandatory: the browser sends consent once the camera is on.
+    return student.post("/api/student/attempts", json={"proctoring_consent": True}, headers=csrf(student))
 
 
 def answer(student: TestClient, attempt_id: int, question_id: int, **body):

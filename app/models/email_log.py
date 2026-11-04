@@ -21,6 +21,13 @@ class EmailLog(TimestampMixin, Base):
             unique=True,
             postgresql_where=text("notification_type = 'result'"),
         ),
+        # At most one reminder per assignment.
+        Index(
+            "uq_email_logs_one_reminder",
+            "related_assignment_id",
+            unique=True,
+            postgresql_where=text("notification_type = 'reminder'"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

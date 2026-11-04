@@ -22,13 +22,11 @@ from app.schemas.assessment import (
     AssessmentCreate,
     AssessmentUpdate,
     GenerateQuestionsRequest,
-    GenerateQuestionsRequest,
     QuestionCreate,
     QuestionUpdate,
     validate_question_fields,
 )
 from app.services.scoring import validate_category_scale
-from app.services.ai_service import AIServiceError, ai_service
 from app.services.ai_service import AIServiceError, ai_service
 
 logger = logging.getLogger(__name__)
@@ -45,7 +43,13 @@ EDITABLE_AFTER_PUBLISH = {
     "duration_minutes",
     "completion_policy",
     "max_attempts",
+    # These only affect attempts started after the change:
+    "shuffle_questions",
+    "shuffle_options",
+    "reminder_minutes_before_end",
 }
+# Camera proctoring is mandatory for every assessment.
+PROCTORING_MODE = "required"
 
 
 # ---------------------------------------------------------------------------
@@ -89,6 +93,10 @@ def to_out(assessment: Assessment, include_questions: bool = False) -> dict:
         "category_scale": category_scale_for(assessment),
         "question_count": len(assessment.questions),
         "total_points": float(_total_points(assessment)),
+        "shuffle_questions": assessment.shuffle_questions,
+        "shuffle_options": assessment.shuffle_options,
+        "proctoring_mode": PROCTORING_MODE,
+        "reminder_minutes_before_end": assessment.reminder_minutes_before_end,
         "published_at": assessment.published_at,
         "created_at": assessment.created_at,
         "updated_at": assessment.updated_at,
@@ -160,6 +168,10 @@ def create_assessment(db: Session, data: AssessmentCreate, admin: User) -> Asses
         completion_policy=data.completion_policy or settings.assessment_completion_policy,
         max_attempts=data.max_attempts,
         category_scale_json=scale,
+        shuffle_questions=data.shuffle_questions,
+        shuffle_options=data.shuffle_options,
+        proctoring_mode=PROCTORING_MODE,
+        reminder_minutes_before_end=data.reminder_minutes_before_end,
         status="draft",
         created_by=admin.id,
     )
@@ -193,7 +205,7 @@ def update_assessment(db: Session, assessment_id: int, data: AssessmentUpdate) -
         if scale is not None:
             _check_scale(scale)
         assessment.category_scale_json = scale
-    for field in ("title", "duration_minutes", "completion_policy", "max_attempts", "difficulty"):
+    for field in ("title", "duration_minutes", "completion_policy", "max_attempts", "difficulty", "shuffle_questions", "shuffle_options"):
         if field in changes and changes[field] is None:
             raise bad_request(f"{field} cannot be empty.")
     for field, value in changes.items():
@@ -250,6 +262,10 @@ def duplicate_assessment(db: Session, assessment_id: int, admin: User) -> Assess
         completion_policy=source.completion_policy,
         max_attempts=source.max_attempts,
         category_scale_json=source.category_scale_json,
+        shuffle_questions=source.shuffle_questions,
+        shuffle_options=source.shuffle_options,
+        proctoring_mode=PROCTORING_MODE,
+        reminder_minutes_before_end=source.reminder_minutes_before_end,
         status="draft",
         created_by=admin.id,
     )

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -6,6 +6,9 @@ from app.dependencies import get_current_admin
 from app.models import User
 from app.schemas.assessment import AssessmentCreate, AssessmentDetail, AssessmentOut, AssessmentUpdate, GenerateQuestionsRequest
 from app.services import assessment_service
+
+from app.dependencies import ai_rate_limited, client_ip
+from app.services import audit_service
 
 router = APIRouter(prefix="/api/assessments", tags=["assessments"], dependencies=[Depends(get_current_admin)])
 
@@ -33,20 +36,26 @@ def update_assessment(assessment_id: int, body: AssessmentUpdate, db: Session = 
 
 
 @router.post("/{assessment_id}/generate-questions", response_model=AssessmentDetail)
-def generate_questions(assessment_id: int, body: GenerateQuestionsRequest, db: Session = Depends(get_db)):
+def generate_questions(
+    assessment_id: int, body: GenerateQuestionsRequest, db: Session = Depends(get_db), admin: User = Depends(ai_rate_limited)
+):
     """Generate and append requested objective questions to a draft."""
     assessment = assessment_service.generate_questions(db, assessment_id, body)
     return assessment_service.to_out(assessment, include_questions=True)
 
 
 @router.post("/{assessment_id}/publish", response_model=AssessmentDetail)
-def publish(assessment_id: int, db: Session = Depends(get_db)):
-    return assessment_service.to_out(assessment_service.publish_assessment(db, assessment_id), include_questions=True)
+def publish(assessment_id: int, request: Request, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    out = assessment_service.to_out(assessment_service.publish_assessment(db, assessment_id), include_questions=True)
+    audit_service.admin(admin, "assessment.publish", target_type="assessment", target_id=assessment_id, details={"title": out["title"]}, ip=client_ip(request))
+    return out
 
 
 @router.post("/{assessment_id}/archive", response_model=AssessmentDetail)
-def archive(assessment_id: int, db: Session = Depends(get_db)):
-    return assessment_service.to_out(assessment_service.archive_assessment(db, assessment_id), include_questions=True)
+def archive(assessment_id: int, request: Request, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    out = assessment_service.to_out(assessment_service.archive_assessment(db, assessment_id), include_questions=True)
+    audit_service.admin(admin, "assessment.archive", target_type="assessment", target_id=assessment_id, details={"title": out["title"]}, ip=client_ip(request))
+    return out
 
 
 @router.post("/{assessment_id}/duplicate", response_model=AssessmentDetail, status_code=201)

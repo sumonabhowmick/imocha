@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_admin
-from app.models import EmailLog
-from app.services import feedback_service
+from app.dependencies import ai_rate_limited, client_ip, get_current_admin
+from app.models import EmailLog, User
+from app.services import audit_service, feedback_service
 from app.workflows.assessment_workflow import deliver_feedback_and_email, retry_email
 
 router = APIRouter(prefix="/api/admin", tags=["feedback"], dependencies=[Depends(get_current_admin)])
@@ -18,7 +18,7 @@ def result_feedback(result_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/results/{result_id}/retry-feedback")
-def retry_feedback(result_id: int, force: bool = False, db: Session = Depends(get_db)):
+def retry_feedback(result_id: int, force: bool = False, db: Session = Depends(get_db), admin: User = Depends(ai_rate_limited)):
     """Regenerate failed (or, with force=true, all) feedback, then send the result email
     if it has not been delivered yet. The verified score is never modified."""
     summary = deliver_feedback_and_email(db, result_id, force_feedback=force)
@@ -31,7 +31,7 @@ def get_group_feedback(assessment_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/assessments/{assessment_id}/group-feedback")
-def generate_group_feedback(assessment_id: int, db: Session = Depends(get_db)):
+def generate_group_feedback(assessment_id: int, db: Session = Depends(get_db), admin: User = Depends(ai_rate_limited)):
     fb = feedback_service.generate_group_feedback(db, assessment_id)
     return {"assessment_id": assessment_id, "group": feedback_service.feedback_to_out(fb)}
 
@@ -64,6 +64,7 @@ def email_logs(
 
 
 @router.post("/email-logs/{email_log_id}/retry")
-def retry_email_log(email_log_id: int, db: Session = Depends(get_db)):
+def retry_email_log(email_log_id: int, request: Request, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
     log = retry_email(db, email_log_id)
+    audit_service.admin(admin, "email.retry", target_type="email_log", target_id=email_log_id, details={"status": log.status}, ip=client_ip(request))
     return {"email_log_id": log.id, "status": log.status, "error": log.last_error}

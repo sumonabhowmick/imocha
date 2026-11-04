@@ -19,6 +19,7 @@ class ResendCodeRequest(BaseModel):
 class VerifyResponse(BaseModel):
     message: str
     csrf_token: str
+    assignment_id: int | None = None  # the portal opens this assessment after verification
 
 
 class StudentAssessmentOverview(BaseModel):

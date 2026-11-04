@@ -155,11 +155,19 @@ def retry_email(db: Session, log_id: int) -> EmailLog:
 def sweep_once() -> None:
     """Auto-finalize expired attempts and run the workflow for submitted attempts that
     have no result yet (e.g. the server stopped mid-processing)."""
+    from app.services import reminder_service
+
     with SessionLocal() as db:
         attempt_service.finalize_expired_attempts(db)
         pending = attempt_service.unprocessed_submitted_attempts(db)
     for attempt_id in pending:
         process_attempt(attempt_id)
+    with SessionLocal() as db:
+        reminder_service.send_due_reminders(db)
+    from app.services import proctoring_service
+
+    with SessionLocal() as db:
+        proctoring_service.purge_old_snapshots(db)
 
 
 class Sweeper:

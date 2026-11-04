@@ -1,0 +1,48 @@
+# Render Blueprint for AssessFlow AI: one web service runs the whole app
+# (FastAPI API + admin console + student portal). The database lives on Neon.
+#
+# Render: New > Blueprint > select this repository. Values marked `sync: false` are
+# secrets you type into Render; they are never stored in Git.
+services:
+  - type: web
+    name: assessflow-ai
+    runtime: python
+    plan: free
+    region: singapore
+    # Install dependencies, then apply database migrations (safe to repeat).
+    buildCommand: pip install -r requirements.txt && alembic upgrade head
+    # --proxy-headers: rate limits and audit logs see the visitor's real IP behind Render's proxy.
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips "*"
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: APP_ENV
+        value: production
+      - key: APP_SECRET_KEY
+        generateValue: true
+      - key: APP_TIMEZONE
+        value: Asia/Kolkata
+      - key: DATABASE_URL            # Neon connection string (database assessflow_ai)
+        sync: false
+      - key: PUBLIC_BASE_URL         # this service's https address, e.g. https://assessflow-ai.onrender.com
+        sync: false
+      - key: DASHBOARD_URL           # the same address followed by /admin
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: AI_TEXT_GRADING_ENABLED
+        value: "false"
+      - key: EMAIL_BACKEND
+        value: brevo
+      - key: BREVO_API_KEY
+        sync: false
+      - key: SMTP_FROM_EMAIL         # the Gmail address verified as a sender in Brevo
+        sync: false
+      - key: ADMIN_NOTIFICATION_EMAIL
+        sync: false
+      - key: SUPPORT_CONTACT
+        value: your assessment administrator

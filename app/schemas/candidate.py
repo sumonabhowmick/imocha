@@ -24,6 +24,7 @@ class CandidateOut(ORMModel):
     email: str
     is_active: bool
     created_at: datetime
+    batches: list[dict] = []  # [{"id": 1, "name": "CSE A"}]; filled by the list endpoint
 
 
 class AssignRequest(BaseModel):

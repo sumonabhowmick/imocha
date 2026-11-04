@@ -17,3 +17,6 @@ outbox/
 .DS_Store
 Thumbs.db
 logs/
+
+# Server logs and local test artefacts
+*.log

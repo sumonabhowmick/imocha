@@ -51,8 +51,30 @@ def create_admin(db: Session, name: str, email: str, password: str) -> User:
     return user
 
 
-def authenticate_admin(db: Session, email: str, password: str, client_ip: str) -> tuple[User, str, datetime]:
+def reset_admin_password(db: Session, email: str, new_password: str) -> User:
+    """Set a new password for an existing admin and sign out all their sessions
+    (so anyone holding an old session is logged out). Raises ValueError."""
+    validate_password_strength(new_password)
+    user = db.scalar(select(User).where(User.email == normalize_email(email)))
+    if user is None:
+        raise ValueError("No admin account has this email.")
+    user.password_hash = hash_password(new_password)
+    db.execute(
+        update(AuthSession)
+        .where(AuthSession.user_id == user.id, AuthSession.revoked_at.is_(None))
+        .values(revoked_at=utcnow())
+    )
+    db.commit()
+    logger.info("Admin password reset (id=%s); existing sessions revoked", user.id)
+    return user
+
+
+def authenticate_admin(
+    db: Session, email: str, password: str, client_ip: str, csrf_token: str | None = None
+) -> tuple[User, str, datetime]:
     """Verify credentials and open a new session. Returns (user, raw_token, expires_at).
+
+    Browser (cookie) logins pass a `csrf_token`, whose hash is stored on the session.
 
     Errors are deliberately generic so they do not reveal whether an account exists.
     """
@@ -71,7 +93,7 @@ def authenticate_admin(db: Session, email: str, password: str, client_ip: str) -
 
     rate_limiter.reset(f"login-email:{email}")
     user.last_login_at = utcnow()
-    token, expires_at = _create_session(db, kind="admin", user_id=user.id)
+    token, expires_at = _create_session(db, kind="admin", user_id=user.id, csrf_token=csrf_token)
     db.commit()
     return user, token, expires_at
 
@@ -85,6 +107,7 @@ def _create_session(
     kind: str,
     user_id: int | None = None,
     invitation_id: int | None = None,
+    candidate_id: int | None = None,
     csrf_token: str | None = None,
     ttl_minutes: int | None = None,
 ) -> tuple[str, datetime]:
@@ -102,6 +125,7 @@ def _create_session(
             kind=kind,
             user_id=user_id,
             invitation_id=invitation_id,
+            candidate_id=candidate_id,
             csrf_token_hash=hash_session_token(csrf_token) if csrf_token else None,
             expires_at=expires_at,
         )
@@ -109,13 +133,33 @@ def _create_session(
     return token, expires_at
 
 
-def create_student_session(db: Session, invitation_id: int) -> tuple[str, str]:
-    """Revoke earlier sessions for this invitation and open a new one.
+def create_student_session(db: Session, invitation_id: int, candidate_id: int | None = None) -> tuple[str, str]:
+    """Revoke earlier sessions for this invitation and open a new one. The session also
+    records the candidate, so it can be used in the student portal.
     Returns (session_token, csrf_token). The caller commits."""
     revoke_student_sessions(db, invitation_id)
     csrf_token = generate_token()
-    token, _ = _create_session(db, kind="student", invitation_id=invitation_id, csrf_token=csrf_token)
+    token, _ = _create_session(
+        db, kind="student", invitation_id=invitation_id, candidate_id=candidate_id, csrf_token=csrf_token
+    )
     return token, csrf_token
+
+
+def create_candidate_session(db: Session, candidate_id: int) -> tuple[str, str]:
+    """Portal session after an email-code login. Returns (session_token, csrf_token).
+    The caller commits."""
+    csrf_token = generate_token()
+    token, _ = _create_session(db, kind="candidate", candidate_id=candidate_id, csrf_token=csrf_token)
+    return token, csrf_token
+
+
+def get_portal_session(db: Session, raw_token: str | None) -> AuthSession | None:
+    """A student-side session: email-code login ('candidate') or invitation link ('student')."""
+    for kind in ("candidate", "student"):
+        session = get_active_session(db, raw_token, kind)
+        if session:
+            return session
+    return None
 
 
 def revoke_student_sessions(db: Session, invitation_id: int) -> None:

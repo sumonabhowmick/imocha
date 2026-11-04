@@ -81,7 +81,7 @@ def test_csrf_token_required_for_student_writes(client, make_client, mailbox):
     headers, assessment, sa, _ = two_students(client, make_client, mailbox)
     assert sa.post("/api/student/attempts").status_code == 403
     assert sa.post("/api/student/attempts", headers={"X-CSRF-Token": "forged"}).status_code == 403
-    assert sa.post("/api/student/attempts", headers=csrf(sa)).status_code == 200
+    assert sa.post("/api/student/attempts", json={"proctoring_consent": True}, headers=csrf(sa)).status_code == 200
 
 
 def test_student_session_cookie_flags(client, make_client, mailbox):

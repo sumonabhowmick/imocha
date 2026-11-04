@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.errors import AppError
 from app.models import AssessmentAssignment, Assessment, AuthSession, Candidate, Invitation, User
-from app.security import constant_time_equals, hash_session_token
+from app.security import constant_time_equals, hash_session_token, rate_limiter
 from app.services import auth_service
 
 STUDENT_COOKIE = "af_student"
@@ -32,14 +32,54 @@ def _bearer_token(authorization: str | None) -> str | None:
     return None
 
 
+ADMIN_COOKIE = "af_admin"
+ADMIN_CSRF_COOKIE = "af_admin_csrf"
+SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+
 def get_current_admin(
+    request: Request,
     authorization: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ) -> User:
-    user = auth_service.get_admin_for_token(db, _bearer_token(authorization))
+    """Admins authenticate with a bearer token (API clients, tests) or, in the browser
+    admin app, with an HttpOnly session cookie. Cookie requests that change data must
+    also send the session's CSRF token in the X-CSRF-Token header."""
+    bearer = _bearer_token(authorization)
+    if bearer:
+        user = auth_service.get_admin_for_token(db, bearer)
+    else:
+        session = auth_service.get_active_session(db, request.cookies.get(ADMIN_COOKIE), "admin")
+        user = None
+        if session:
+            if request.method not in SAFE_METHODS:
+                supplied = request.headers.get(CSRF_HEADER)
+                if not supplied or not constant_time_equals(hash_session_token(supplied), session.csrf_token_hash):
+                    raise AppError(403, "Invalid or missing CSRF token. Please reload the page.", "csrf_failed")
+            user = db.get(User, session.user_id)
+            if user and (not user.is_active or user.role != "admin"):
+                user = None
     if not user:
         raise AppError(401, "Authentication required.", "unauthenticated")
     return user
+
+
+def ai_rate_limited(admin: User = Depends(get_current_admin)) -> User:
+    """Caps AI-backed admin actions per admin (protects the OpenAI bill if a session leaks
+    or a script misbehaves)."""
+    from app.config import get_settings
+
+    if not rate_limiter.hit(f"ai-admin:{admin.id}", get_settings().ai_actions_per_10_minutes, 600):
+        raise AppError(429, "Too many AI requests. Please wait a few minutes.", "rate_limited")
+    return admin
+
+
+def agent_rate_limited(admin: User = Depends(get_current_admin)) -> User:
+    from app.config import get_settings
+
+    if not rate_limiter.hit(f"agent-admin:{admin.id}", get_settings().agent_messages_per_10_minutes, 600):
+        raise AppError(429, "Too many assistant messages. Please wait a few minutes.", "rate_limited")
+    return admin
 
 
 @dataclass

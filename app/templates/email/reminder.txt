@@ -1,0 +1,11 @@
+{{ app_name }} - Reminder
+
+Hello {{ candidate_name }},
+
+You have not started "{{ assessment_title }}" yet.
+The access window closes at {{ window_end }}. Once you start, you have {{ duration_minutes }} minutes.
+
+To begin, open the Start Assessment link from your invitation email, or sign in to the
+student portal with your email address: {{ portal_url }}
+
+If you have already finished or do not plan to take this assessment, you can ignore this email.

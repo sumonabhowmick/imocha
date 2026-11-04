@@ -11,6 +11,11 @@ from app.models.answer import Answer
 from app.models.result import Result
 from app.models.feedback import Feedback
 from app.models.email_log import EmailLog
+from app.models.batch import Batch, BatchMember
+from app.models.bank_question import BankQuestion
+from app.models.login_code import LoginCode
+from app.models.proctoring import ProctoringEvent
+from app.models.audit import AuditEvent
 
 __all__ = [
     "User",
@@ -25,4 +30,10 @@ __all__ = [
     "Result",
     "Feedback",
     "EmailLog",
+    "Batch",
+    "BatchMember",
+    "BankQuestion",
+    "LoginCode",
+    "ProctoringEvent",
+    "AuditEvent",
 ]

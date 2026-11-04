@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -25,6 +25,10 @@ class Assessment(TimestampMixin, Base):
         ),
         CheckConstraint("duration_minutes > 0", name="ck_assessments_duration_positive"),
         CheckConstraint("max_attempts >= 1", name="ck_assessments_max_attempts"),
+        CheckConstraint("proctoring_mode IN ('off', 'optional', 'required')", name="ck_assessments_proctoring_mode"),
+        CheckConstraint(
+            "reminder_minutes_before_end IS NULL OR reminder_minutes_before_end > 0", name="ck_assessments_reminder"
+        ),
         CheckConstraint(
             "access_start_at IS NULL OR access_end_at IS NULL OR access_end_at > access_start_at",
             name="ck_assessments_window_order",
@@ -47,6 +51,14 @@ class Assessment(TimestampMixin, Base):
     category_scale_json: Mapped[list | None] = mapped_column(JSONB)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Anti-cheating: each student gets their own question and/or option order.
+    shuffle_questions: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    shuffle_options: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    # Camera proctoring is mandatory: every assessment is "required" (no camera, no quiz).
+    # Older values ("off", "optional") are kept valid only for historical rows.
+    proctoring_mode: Mapped[str] = mapped_column(String(10), nullable=False, default="required", server_default="required")
+    # Send a reminder to students who have not started, this many minutes before the window closes.
+    reminder_minutes_before_end: Mapped[int | None] = mapped_column(Integer)
 
     questions = relationship(
         "Question",

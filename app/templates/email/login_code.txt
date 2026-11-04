@@ -1,0 +1,8 @@
+{{ app_name }} - Sign-in code
+
+Hello {{ candidate_name }},
+
+Your sign-in code for the {{ app_name }} student portal is: {{ passcode }}
+
+It expires in {{ passcode_ttl }} minutes and can be used only once.
+If you did not try to sign in, you can ignore this email. Never share this code with anyone.

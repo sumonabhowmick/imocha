@@ -16,6 +16,7 @@ from app.schemas.common import AwareDatetimeMixin, ORMModel
 QuestionType = Literal["mcq_single", "mcq_multi", "text", "coding"]
 Difficulty = Literal["beginner", "intermediate", "advanced"]
 CompletionPolicy = Literal["finish_after_window", "hard_end_at_window"]
+ProctoringMode = Literal["off", "optional", "required"]
 
 
 class CategoryBand(BaseModel):
@@ -36,6 +37,10 @@ class AssessmentBase(AwareDatetimeMixin):
     completion_policy: CompletionPolicy | None = None
     max_attempts: int = Field(1, ge=1, le=10)
     category_scale: list[CategoryBand] | None = None
+    shuffle_questions: bool = False
+    shuffle_options: bool = False
+    # Camera proctoring is mandatory for every assessment, so there is no setting for it.
+    reminder_minutes_before_end: int | None = Field(None, ge=5, le=10080)
 
 
 class AssessmentCreate(AssessmentBase):
@@ -56,6 +61,9 @@ class AssessmentUpdate(AwareDatetimeMixin):
     completion_policy: CompletionPolicy | None = None
     max_attempts: int | None = Field(None, ge=1, le=10)
     category_scale: list[CategoryBand] | None = None
+    shuffle_questions: bool | None = None
+    shuffle_options: bool | None = None
+    reminder_minutes_before_end: int | None = Field(None, ge=5, le=10080)
 
 
 class GenerateQuestionsRequest(BaseModel):
@@ -173,6 +181,10 @@ class AssessmentOut(BaseModel):
     category_scale: list[dict]
     question_count: int
     total_points: float
+    shuffle_questions: bool
+    shuffle_options: bool
+    proctoring_mode: str
+    reminder_minutes_before_end: int | None
     published_at: datetime | None
     created_at: datetime
     updated_at: datetime

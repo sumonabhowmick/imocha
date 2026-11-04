@@ -204,10 +204,15 @@ def verify_passcode(db: Session, token: str, passcode: str, client_ip: str) -> t
     inv.failed_attempts = 0
     inv.locked_until = None
     inv.status = "verified"
-    session_token, csrf_token = auth_service.create_student_session(db, inv.id)
+    session_token, csrf_token = auth_service.create_student_session(db, inv.id, assignment.candidate_id)
     db.commit()
     logger.info("Invitation %s verified", inv.id)
     return session_token, csrf_token
+
+
+def assignment_id_for_token(db: Session, token: str) -> int | None:
+    inv = _find_invitation(db, token)
+    return inv.assignment_id if inv else None
 
 
 def resend_code(db: Session, token: str, client_ip: str) -> str:

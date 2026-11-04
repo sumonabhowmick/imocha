@@ -1,6 +1,5 @@
 from datetime import timedelta
 
-from app.database import SessionLocal
 from app.models import AuthSession, EmailLog, Invitation
 from tests.helpers import (
     assign,

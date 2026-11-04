@@ -8,7 +8,7 @@ from app.database import get_db
 from app.dependencies import get_current_admin
 from app.errors import conflict
 from app.models import User
-from app.services import email_service, grading_service, result_service
+from app.services import audit_service, email_service, grading_service, result_service
 from app.workflows.assessment_workflow import after_manual_review
 
 router = APIRouter(prefix="/api/admin", tags=["results"], dependencies=[Depends(get_current_admin)])
@@ -50,6 +50,7 @@ def grade_answer(
     admin: User = Depends(get_current_admin),
 ):
     result, became_final = grading_service.manual_grade(db, answer_id, body.awarded_points, body.rationale, admin)
+    audit_service.admin(admin, "answer.manual_grade", target_type="answer", target_id=answer_id, details={"points": float(body.awarded_points), "result_id": result.id})
     if became_final:
         background.add_task(after_manual_review, result.id)
     return {"result_id": result.id, "result_status": result.result_status, "became_final": became_final}

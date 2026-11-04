@@ -31,8 +31,8 @@ class Settings(BaseSettings):
     app_timezone: str = "Asia/Kolkata"
     # Public URL students use to reach the backend (used to build email links).
     public_base_url: str = "http://localhost:8000"
-    # URL of the Streamlit dashboard (used in admin notification emails).
-    dashboard_url: str = "http://localhost:8501"
+    # URL of the admin console (used in admin notification emails).
+    dashboard_url: str = "http://localhost:8000/admin"
     # Comma-separated list of allowed CORS origins. Empty = no cross-origin access.
     cors_origins: str = ""
 
@@ -46,10 +46,12 @@ class Settings(BaseSettings):
     ai_text_grading_enabled: bool = False
 
     # --- Email ---
-    # "smtp" sends real email. "outbox" (development only) writes emails to files in
-    # EMAIL_OUTBOX_DIR instead of sending them, so the flow can be demonstrated locally.
-    email_backend: str = Field("smtp", pattern="^(smtp|outbox)$")
+    # "smtp" sends real email (e.g. Gmail). "brevo" sends through Brevo's HTTPS API, for
+    # hosts that block SMTP ports (e.g. Render's free plan). "outbox" (development only)
+    # writes emails to files in EMAIL_OUTBOX_DIR instead of sending them.
+    email_backend: str = Field("smtp", pattern="^(smtp|brevo|outbox)$")
     email_outbox_dir: str = "outbox"
+    brevo_api_key: str = ""
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_username: str = ""
@@ -83,7 +85,26 @@ class Settings(BaseSettings):
     # Background sweeper that auto-finalizes expired attempts (seconds; 0 disables it).
     sweeper_interval_seconds: int = Field(60, ge=0)
 
+    # --- Proctoring and limits ---
+    proctoring_snapshot_retention_days: int = Field(30, ge=1, le=365)
+    agent_messages_per_10_minutes: int = Field(20, ge=1)
+    ai_actions_per_10_minutes: int = Field(30, ge=1)
+    max_request_bytes: int = Field(2_000_000, ge=10_000)
+    # Comma-separated hostnames the server answers to (Host header check). Empty = any.
+    allowed_hosts: str = "localhost,127.0.0.1,testserver"
+
     demo_mode: bool = False
+
+    @field_validator("database_url")
+    @classmethod
+    def _use_psycopg_driver(cls, value: str) -> str:
+        """Hosted databases (Neon, Render) give plain postgres:// or postgresql:// URLs;
+        point them at the installed psycopg 3 driver."""
+        value = value.strip()
+        for prefix in ("postgres://", "postgresql://"):
+            if value.startswith(prefix):
+                return "postgresql+psycopg://" + value[len(prefix):]
+        return value
 
     @field_validator("app_timezone")
     @classmethod
@@ -109,7 +130,9 @@ class Settings(BaseSettings):
         elif not self.database_url.startswith("postgresql"):
             problems.append("DATABASE_URL must point to PostgreSQL (postgresql+psycopg://...).")
         if self.email_backend == "outbox" and self.app_env == "production":
-            problems.append("EMAIL_BACKEND=outbox is for development only; use smtp in production.")
+            problems.append("EMAIL_BACKEND=outbox is for development only; use smtp or brevo in production.")
+        if self.email_backend == "brevo" and not self.brevo_api_key:
+            problems.append("EMAIL_BACKEND=brevo needs BREVO_API_KEY.")
         if problems:
             raise ValueError("Invalid configuration:\n  - " + "\n  - ".join(problems))
         return self

@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_admin
+from app.dependencies import client_ip, get_current_admin
 from app.errors import AppError
-from app.models import User
+from app.models import Batch, BatchMember, User
 from app.schemas.candidate import (
     AssignmentOut,
     AssignRequest,
@@ -12,7 +13,7 @@ from app.schemas.candidate import (
     CandidateOut,
     CandidateUpdate,
 )
-from app.services import candidate_service, invitation_service
+from app.services import audit_service, candidate_service, invitation_service
 
 router = APIRouter(prefix="/api", tags=["candidates"], dependencies=[Depends(get_current_admin)])
 
@@ -26,9 +27,23 @@ def create_candidate(body: CandidateCreate, db: Session = Depends(get_db)):
 def list_candidates(
     search: str | None = Query(None, max_length=100),
     active_only: bool = False,
+    batch_id: int | None = None,
     db: Session = Depends(get_db),
 ):
-    return candidate_service.list_candidates(db, search, active_only)
+    candidates = candidate_service.list_candidates(db, search, active_only, batch_id)
+    memberships: dict[int, list[dict]] = {}
+    if candidates:
+        rows = db.execute(
+            select(BatchMember.candidate_id, Batch.id, Batch.name)
+            .join(Batch, Batch.id == BatchMember.batch_id)
+            .where(BatchMember.candidate_id.in_([c.id for c in candidates]))
+            .order_by(Batch.name)
+        ).all()
+        for cid, bid, bname in rows:
+            memberships.setdefault(cid, []).append({"id": bid, "name": bname})
+    return [
+        CandidateOut.model_validate(c).model_copy(update={"batches": memberships.get(c.id, [])}) for c in candidates
+    ]
 
 
 @router.patch("/candidates/{candidate_id}", response_model=CandidateOut)
@@ -38,9 +53,10 @@ def update_candidate(candidate_id: int, body: CandidateUpdate, db: Session = Dep
 
 
 @router.delete("/candidates/{candidate_id}", status_code=204)
-def delete_candidate(candidate_id: int, db: Session = Depends(get_db)):
+def delete_candidate(candidate_id: int, request: Request, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
     """Delete a candidate who has never started an assessment (409 otherwise: deactivate instead)."""
     candidate_service.delete_candidate(db, candidate_id)
+    audit_service.admin(admin, "candidate.delete", target_type="candidate", target_id=candidate_id, ip=client_ip(request))
 
 
 @router.post("/assessments/{assessment_id}/assign")

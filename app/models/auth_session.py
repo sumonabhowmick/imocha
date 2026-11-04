@@ -17,9 +17,10 @@ class AuthSession(Base):
 
     __tablename__ = "auth_sessions"
     __table_args__ = (
-        CheckConstraint("kind IN ('admin', 'student')", name="ck_auth_sessions_kind"),
+        CheckConstraint("kind IN ('admin', 'student', 'candidate')", name="ck_auth_sessions_kind"),
         CheckConstraint(
-            "(kind = 'admin' AND user_id IS NOT NULL) OR (kind = 'student' AND invitation_id IS NOT NULL)",
+            "(kind = 'admin' AND user_id IS NOT NULL) OR (kind = 'student' AND invitation_id IS NOT NULL)"
+            " OR (kind = 'candidate' AND candidate_id IS NOT NULL)",
             name="ck_auth_sessions_owner",
         ),
     )
@@ -31,6 +32,8 @@ class AuthSession(Base):
     invitation_id: Mapped[int | None] = mapped_column(
         ForeignKey("invitations.id", ondelete="CASCADE"), index=True
     )
+    # Student portal sessions (email-code login or invitation link) belong to a candidate.
+    candidate_id: Mapped[int | None] = mapped_column(ForeignKey("candidates.id", ondelete="CASCADE", name="fk_auth_sessions_candidate_id"), index=True)
     csrf_token_hash: Mapped[str | None] = mapped_column(String(64))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, create_engine, func
+from sqlalchemy import DateTime, create_engine, event, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from app.config import get_settings
@@ -29,11 +29,19 @@ class TimestampMixin:
 
 
 _settings = get_settings()
-# Every connection uses UTC so timestamps read back from PostgreSQL are always UTC
-# (display conversion to APP_TIMEZONE happens in the application, not the database).
-engine = create_engine(
-    _settings.database_url, pool_pre_ping=True, future=True, connect_args={"options": "-c timezone=UTC"}
-)
+engine = create_engine(_settings.database_url, pool_pre_ping=True, future=True)
+
+
+@event.listens_for(engine, "connect")
+def _use_utc(dbapi_connection, _record) -> None:
+    """Every connection uses UTC so timestamps read back from PostgreSQL are always UTC
+    (display conversion to APP_TIMEZONE happens in the application). A SET command is
+    used instead of a startup option because hosted poolers (e.g. Neon) reject those."""
+    with dbapi_connection.cursor() as cursor:
+        cursor.execute("SET TIME ZONE 'UTC'")
+    dbapi_connection.commit()
+
+
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 

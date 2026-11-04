@@ -102,6 +102,12 @@ def agent_tool(name: str, risk: str) -> Callable:
                 result = fn(db, config, **kwargs)
                 if risk != "read":
                     audit_log.info("agent tool=%s risk=%s admin=%s args=%s outcome=ok", name, risk, admin_id, _safe_args(kwargs))
+                    from app.services import audit_service
+
+                    audit_service.record(
+                        f"agent.tool.{name}", actor_type="agent", actor_id=admin_id,
+                        actor_label=f"assistant for admin {admin_id}", details={"risk": risk, "args": _safe_args(kwargs)},
+                    )
                 return to_text(result)
             except GraphBubbleUp:
                 raise  # LangGraph's interrupt() for approvals - must propagate
